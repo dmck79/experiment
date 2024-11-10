@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Pharma Viva Thread</title>
+    <style>
+        /* Set the background */
+        body {
+            background-image: url('https://your-image-link.com'); /* Replace with your background image URL */
+            background-size: cover;
+            background-position: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: start;
+            height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: white;
+        }
+
+        /* Center the container with header and dropdown */
+        .content-container {
+            margin-top: 50px;
+            padding: 20px;
+            background: rgba(0, 0, 0, 0.5); /* Semi-transparent background for contrast */
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        /* Style the header */
+        h1 {
+            font-size: 2.5em;
+            margin: 0;
+            padding-bottom: 20px;
+        }
+
+        /* Style the dropdown */
+        select {
+            padding: 10px;
+            font-size: 1em;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        /* Style the white display box */
+        .display-box {
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            color: black;
+            font-size: 1.2em;
+            width: 80%;
+            max-width: 600px;
+            border-radius: 10px;
+            box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+            text-align: left;
+        }
+
+        /* Style the reveal button */
+        .reveal-btn {
+            margin-top: 10px;
+            padding: 10px 20px;
+            font-size: 1em;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        /* Style for names in blue color */
+        .name {
+            color: blue;
+        }
+
+        /* Style for preInfo (column B) in blue */
+        .pre-info {
+            color: blue;
+        }
+
+        /* Style for postInfo (column G) in red */
+        .post-info {
+            color: red;
+        }
+    </style>
+    <script>
+        let namesVisible = false;
+        let responses = [];
+
+        async function fetchSheetData(columnNumber, includeBG = false) {
+            const sheetId = '14FMC1yi8fGcPfkOrSo98tVGHU0nV3B-ZD7y6_TV0xf0'; // Replace with your Google Sheet ID
+            const range = `Form Responses 1!B2:G100`; // Updated range to include columns B to G
+
+            const url = `https://sheets.googleapis.com/v4/spreadsheets/${sheetId}/values/${range}?key=AIzaSyD28a6NTa5Kw62gfiu23RNJmaYdgFj8IAY`; // Replace with your API Key
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                if (includeBG) {
+                    // For "General view", include columns B, F, and G, and sort by column G (latest date first)
+                    responses = data.values
+                        .map(row => ({
+                            preInfo: row[0] || "",    // Column B
+                            text: row[4] || "",       // Column F
+                            postInfo: row[5] || "",   // Column G (Date)
+                        }))
+                        .filter(row => row.text && row.postInfo) // Ensure there's content in F and G
+                        .sort((a, b) => new Date(b.postInfo) - new Date(a.postInfo)); // Sort by date in column G
+                } else {
+                    // For other options, only fetch the selected column
+                    responses = data.values
+                        .map(row => ({
+                            name: row[0] || "",       // Column B (for names)
+                            text: row[columnNumber - 2] || "" // Selected column
+                        }))
+                        .filter(row => row.text);
+                }
+
+                displayData(includeBG);
+            } catch (error) {
+                console.error("Error fetching data:", error);
+            }
+        }
+
+        function displayData(includeBG = false) {
+            const display = document.getElementById("display");
+            display.innerHTML = ""; // Clear previous data
+
+            if (responses.length > 0) {
+                responses.forEach((item) => {
+                    const p = document.createElement("p");
+
+                    if (includeBG) {
+                        // Display format for "General view" with column B and G info
+                        p.innerHTML = `<div>[<span class="pre-info">${item.preInfo}</span> | <span class="post-info">${item.postInfo}</span>]</div><div>${item.text}</div>`;
+                    } else {
+                        // Display format for other options
+                        p.innerHTML = item.text + (namesVisible && item.name ? ` <span class="name">[${item.name}]</span>` : "");
+                    }
+
+                    display.appendChild(p);
+                });
+            } else {
+                display.textContent = "No data available.";
+            }
+        }
+
+        function handleOptionChange() {
+            const selectedOption = document.getElementById("options").value;
+            const revealBtn = document.getElementById("reveal-btn");
+
+            if (selectedOption === "generalView") {
+                fetchSheetData(6, true); // Fetch for General view with columns B, F, and G
+                revealBtn.style.display = "none"; // Hide reveal button for General view
+            } else {
+                if (selectedOption === "option1") fetchSheetData(3);
+                else if (selectedOption === "option2") fetchSheetData(4);
+                else if (selectedOption === "option3") fetchSheetData(5);
+
+                revealBtn.style.display = "block"; // Show reveal button for other options
+            }
+        }
+
+        function toggleNames() {
+            namesVisible = !namesVisible;
+            document.getElementById("reveal-btn").textContent = namesVisible ? "Hide names" : "Reveal names";
+            displayData();
+        }
+    </script>
+</head>
+<body>
+    <div class="content-container">
+        <h1>Pharma Viva Thread</h1>
+        <label for="options">Select item:</label>
+        <select id="options" onchange="handleOptionChange()">
+            <option value="">Select...</option>
+            <option value="generalView">General view</option>
+            <option value="option1">Item 1</option>
+            <option value="option2">Item 2</option>
+            <option value="option3">Item 3</option>
+        </select>
+    </div>
+    
+    <!-- White display box for responses -->
+    <div id="display" class="display-box"></div>
+
+    <!-- Reveal/Hide names button -->
+    <button id="reveal-btn" class="reveal-btn" style="display:none;" onclick="toggleNames()">Reveal names</button>
+</body>
+</html>
